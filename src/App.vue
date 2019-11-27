@@ -1,11 +1,24 @@
 <template>
 	<div id="app">
 		
+		<div class="score">
+			<div>得分: {{ score }}</div>
+			<div>
+				<span>游戏难度:</span>
+				<select name="speed" v-model="speed" class="speed-select">
+					<option :value="1000">简单</option>
+					<option :value="700">容易</option>
+					<option :value="500">正常</option>
+					<option :value="350">困难</option>
+					<option :value="200">巨难</option>
+				</select>
+			</div>
+		</div>
 		<div class="map-contaner">
 			<div class="map">
 				<div v-for="(row,index) in map" :key="index" class="map-row">
 					<div v-for="(col,indexs) in row" :key="indexs" 
-					:class="(headP.x === index && headP.y === indexs)? 'snake-head' : ((col === 1) || (food && index === food.x && indexs === food.y)? 'snake':'')"
+					:class="(head.x === index && head.y === indexs)? 'snake-head' : ((col === 1)? 'snake' : ((food && index === food.x && indexs === food.y)? 'food':''))"
 					class="item"></div>
 				</div>
 			</div>
@@ -34,38 +47,40 @@ import Vue from 'vue'
 // import touchEvent from './helper/touchEvent.js'
 // @tap="swipe2left(x)" @swipeup="changeDirection(1)" @swipeleft="changeDirection(3)" @swiperight="changeDirection(4)" @swipedown="changeDirection(2)"
 
+const initMap = [
+	[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+	[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+	[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+	[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+	[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+	[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+	[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+	[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+	[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+	[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+	[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+	[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+];
+
 export default {
 	name: 'app',
 	data() {
 		return {
 			// 棋盘 默认出发点是 [0][0]
-			map: [
-				[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-				[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-				[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-				[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-				[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-				[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-				[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-				[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-				[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-				[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-				[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-				[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			],
+			map: JSON.parse(JSON.stringify(initMap)),
 			// 蛇的运动方向  上1 下2 左3 右4
 			direction: 4,
+			// 解决快速多次改变方向时,可能出现的蛇头180度转向问题
+			old_direction: 4, 
 			// 蛇身体所包含所有的map坐标(按顺序)
+			// 数组第一个元素是蛇尾，最后一个元素是蛇头
 			snake: [
 				{x: 0, y: 0}
 			],
-			head: [0,0], // 蛇头坐标
-			foot: [0,0], // 蛇尾坐标
-			over: false, // 游戏是否结束
-			// 食物的坐标
-			food: null,
-			// 定时器对象
-			interval: null,
+			over: false,        // 游戏是否结束
+			food: null,         // 食物的坐标
+			interval: null,     // 定时器对象
+			speed: 500          // 蛇移动的速度
 		}
 	},
 	computed: {
@@ -88,8 +103,16 @@ export default {
 			return this.map.length - 1;
 		},
 		// 蛇头坐标
-		headP() {
+		head() {
 			return this.snake[this.snake.length - 1]
+		},
+		// 蛇尾坐标
+		foot() {
+			return this.snake[0]
+		},
+		// 得分
+		score() {
+			return this.snake.length - 1;
 		}
 	},
 	watch: {
@@ -101,18 +124,12 @@ export default {
 			}
 		}
 	},
-	mounted: function() {	
-		
-	},
 	methods: {
-		swipe2left: function(x) {
-			console.log('swipe2left');
-		},
 		changeDirection: function(val) {
 			val = parseInt(val)
 			// 不允许改变当前方向为相反的方向
-			if ((this.direction === 1 || this.direction === 2) && (val === 1 || val === 2)) return
-			if ((this.direction === 3 || this.direction === 4) && (val === 3 || val === 4)) return
+			if ((this.old_direction === 1 || this.old_direction === 2) && (val === 1 || val === 2)) return
+			if ((this.old_direction === 3 || this.old_direction === 4) && (val === 3 || val === 4)) return
 			this.direction = val
 		},
 		// 随机生成food
@@ -120,26 +137,17 @@ export default {
 			if (this.food === null) {
 				let len = this.left.length
 				// 生成从0到len-1之间的随机数
-				let index = parseInt(Math.random() * ( len + 1 ), 10)
-				
-				console.log('len:');
-				console.log(len);
-				console.log(index);
-				
+				let index = parseInt(Math.random() * len, 10)
 				// 随机生成食物
-				this.food = {
-					x: this.left[index].x,
-					y: this.left[index].y
-				}
+				this.food = this.left[index]
 			}
 		},
 		startGame: function() {
-			if (this.interval !== null) return
+			if (this.interval !== null || this.over) return
 			
 			this.interval = setInterval(() => {
-				let x = this.head[0]
-				let y = this.head[1]
-				
+				let x = this.head.x
+				let y = this.head.y
 				// 随机生成食物
 				this.randomFood()
 				
@@ -150,119 +158,79 @@ export default {
 						this.over = true;
 					} // 吃到食物
 					else if (this.food && x === this.food.x && y + 1 === this.food.y) {
-						// 修改蛇头坐标
-						Vue.set(this.head, 1, y + 1);
+						y = y + 1
 						// 移动蛇头(不需要移动蛇尾)
-						Vue.set(this.map[x], this.head[1], 1);
+						Vue.set(this.map[x], y, 1);
 						// 蛇身增加一个长度
-						this.snake.push({x: x, y: this.head[1]})
+						this.snake.push({x: x, y: y})
 						this.food = null;
 					} // 正常移动
 					else {
-						// 修改蛇头坐标
-						Vue.set(this.head, 1, y + 1);
+						y = y + 1
 						// 移动蛇头和蛇尾
-						Vue.set(this.map[x], this.head[1], 1);
-						Vue.set(this.map[this.foot[0]], this.foot[1], 0);
+						Vue.set(this.map[x], y, 1);
+						Vue.set(this.map[this.foot.x], this.foot.y, 0);
 						// 修改蛇的坐标集
 						this.snake.splice(0, 1)
-						this.snake.push({x: x, y: this.head[1]})
-						// 修改蛇尾坐标
-						Vue.set(this.foot, 0, this.snake[0].x);
-						Vue.set(this.foot, 1, this.snake[0].y);
+						this.snake.push({x: x, y: y})
 					}
-					
-					console.log('snake');
-					console.log(this.snake);
-				
 				} // 向左移动
 				else if (this.direction === 3) {
 					
-					// 超出数组下标(蛇头撞墙) 则游戏结束
 					if (y === 0 || this.map[x][y - 1] === 1) {
 						this.over = true;
 					} else if (this.food && x === this.food.x && y - 1 === this.food.y) {
-						
-						// 吃到食物
-						// 修改蛇头坐标
-						Vue.set(this.head, 1, y - 1);
-						// 移动蛇头
-						Vue.set(this.map[x], this.head[1], 1);
-						this.snake.push({x: x, y: this.head[1]})
-						
+						y = y - 1
+						Vue.set(this.map[x], y, 1);
+						this.snake.push({x: x, y: y})
 						this.food = null;
 					} else {
-						Vue.set(this.head, 1, y - 1);
-						Vue.set(this.map[x], this.head[1], 1);
-						Vue.set(this.map[this.foot[0]], this.foot[1], 0);
-						// 修改蛇的坐标集
+						y = y - 1
+						Vue.set(this.map[x], y, 1);
+						Vue.set(this.map[this.foot.x], this.foot.y, 0);
 						this.snake.splice(0, 1)
-						this.snake.push({x: x, y: this.head[1]})
-						// 修改蛇尾坐标 (需要知道前面蛇身的方向或位置坐标)
-						Vue.set(this.foot, 0, this.snake[0].x);
-						Vue.set(this.foot, 1, this.snake[0].y);
+						this.snake.push({x: x, y: y})
 					}
 					
 				} // 向下移动
 				else if (this.direction === 2) {
 					
-					// 超出数组下标(蛇头撞墙) 则游戏结束
 					if (x + 1 > this.mapHeight || this.map[x + 1][y] === 1) {
 						this.over = true;
 					} else if (this.food && x + 1 === this.food.x && y === this.food.y) {
-						
-						// 吃到食物
-						// 修改蛇头坐标
-						Vue.set(this.head, 0, x + 1);
-						// 移动蛇头
-						Vue.set(this.map[this.head[0]], y, 1);
-						this.snake.push({x: this.head[0], y: y})
-						
+						x = x + 1
+						Vue.set(this.map[x], y, 1);
+						this.snake.push({x: x, y: y})
 						this.food = null;
 					} else {
-						Vue.set(this.head, 0, x + 1);
-						Vue.set(this.map[this.head[0]], y, 1);
-						Vue.set(this.map[this.foot[0]], this.foot[1], 0);
-						// 修改蛇的坐标集
+						x = x + 1
+						Vue.set(this.map[x], y, 1);
+						Vue.set(this.map[this.foot.x], this.foot.y, 0);
 						this.snake.splice(0, 1)
-						this.snake.push({x: this.head[0], y: y})
-						// 修改蛇尾坐标 (需要知道前面蛇身的方向或位置坐标)
-						Vue.set(this.foot, 0, this.snake[0].x);
-						Vue.set(this.foot, 1, this.snake[0].y);
+						this.snake.push({x: x, y: y})
 					}
 					
 				} // 向上移动
  				else {
-					// 超出数组下标(蛇头撞墙) 则游戏结束
+
 					if (x === 0 || this.map[x - 1][y] === 1) {
 						this.over = true;
 					} else if (this.food && x - 1 === this.food.x && y === this.food.y) {
-						
-						// 吃到食物
-						// 修改蛇头坐标
-						Vue.set(this.head, 0, x - 1);
-						// 移动蛇头
-						Vue.set(this.map[this.head[0]], y, 1);
-						this.snake.push({x: this.head[0], y: y})
-						
+						x = x - 1
+						Vue.set(this.map[x], y, 1);
+						this.snake.push({x: x, y: y})
 						this.food = null;
 					} else {
-						Vue.set(this.head, 0, x - 1);
-						Vue.set(this.map[this.head[0]], y, 1);
-						Vue.set(this.map[this.foot[0]], this.foot[1], 0);
-						// 修改蛇的坐标集
+						x = x - 1
+						Vue.set(this.map[x], y, 1);
+						Vue.set(this.map[this.foot.x], this.foot.y, 0);
 						this.snake.splice(0, 1)
-						this.snake.push({x: this.head[0], y: y})
-						// 修改蛇尾坐标 (需要知道前面蛇身的方向或位置坐标)
-						Vue.set(this.foot, 0, this.snake[0].x);
-						Vue.set(this.foot, 1, this.snake[0].y);
+						this.snake.push({x: x, y: y})
 					}
 				}
-				
-				console.log(this.snake);
-				console.log(this.left);
-				
-			}, 500)
+				// 新的方向只有在被使用后才能设置为old_direction
+				this.old_direction = this.direction
+			}, this.speed)
 		},
 		stopGame: function() {
 			clearInterval(this.interval)
@@ -273,25 +241,10 @@ export default {
 			this.snake = [{x: 0, y: 0}]
 			this.food = null
 			this.direction = 4
-			this.head = [0,0]
-			this.foot = [0,0]
+			this.old_direction = 4
 			clearInterval(this.interval)
 			this.interval = null;
-			
-			this.map = [
-				[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-				[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-				[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-				[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-				[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-				[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-				[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-				[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-				[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-				[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-				[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-				[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			];
+			this.map = JSON.parse(JSON.stringify(initMap))
 			this.startGame()
 		}
 	}
@@ -299,6 +252,17 @@ export default {
 </script>
 
 <style>
+	.score {
+		display: flex;
+		justify-content: space-around;
+		font-size: 20px;
+		margin-bottom: 15px;
+		color: red;
+	}
+	.speed-select {
+		margin-left: 5px;
+		height: 22px;
+	}
 	.map-contaner {
 		flex: 1;
 		display: flex;
@@ -323,17 +287,23 @@ export default {
 	}
 	/* 蛇身体的样式 */
 	.snake {
-		background-color: seagreen;
+		border-radius: 13px;
+		background-color: darkseagreen;
 	}
 	/* 蛇头的样式 */
 	.snake-head {
 		border-radius: 13px;
-		background-color: seagreen;
+		background-color: #00FF00;
+	}
+	/* 食物的样式 */
+	.food {
+		border-radius: 13px;
+		background-color: limegreen;
 	}
 	
 	.controll {
 		flex: 1;
-		margin-top: 20px;
+		margin-top: 10px;
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
@@ -357,9 +327,7 @@ export default {
 		flex-direction: column;
 		align-content: center;
 		justify-content: center;
-		padding: 65px;
-		padding-top: 20px;
-		padding-bottom: 0px;
+		padding: 0 65px;
 		clear: both;
 		font-size: 20px;
 		color: white;
@@ -376,14 +344,8 @@ export default {
 		justify-content: space-between;
 	}
 	.center-row div {
-		padding: 15px 46px;
+		padding: 15px 38px;
 		background-color: gray;
-	}
-	.left {
-		margin-right: 20px;
-	}
-	.right {
-		margin-left: 20px;
 	}
 	.bottom {
 		flex: 1;
@@ -398,7 +360,7 @@ export default {
 		-moz-osx-font-smoothing: grayscale;
 		text-align: center;
 		color: #2c3e50;
-		margin-top: 60px;
+		margin-top: 10px;
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
