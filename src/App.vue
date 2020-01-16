@@ -342,9 +342,11 @@ export default {
 		flex: 1;
 		display: flex;
 		justify-content: space-between;
+		margin: 10px 0;
 	}
 	.center-row div {
-		padding: 15px 38px;
+		padding: 15px 0px;
+		width: 48%;
 		background-color: gray;
 	}
 	.bottom {
